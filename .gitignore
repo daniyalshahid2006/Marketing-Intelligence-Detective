@@ -1,0 +1,6 @@
+.idea/
+.venv/
+venv/
+__pycache__/
+*.pyc
+sentiment_human_vs_llm.csv
