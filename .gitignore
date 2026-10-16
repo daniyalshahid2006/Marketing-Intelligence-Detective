@@ -4,3 +4,4 @@ venv/
 __pycache__/
 *.pyc
 sentiment_human_vs_llm.csv
+outputs/cleaned_sentiment_data.csv

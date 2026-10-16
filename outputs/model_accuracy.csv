@@ -1,0 +1,6 @@
+Model,Correct,Total,Accuracy (%)
+Gemini,43,50,86.0
+Copilot,43,50,86.0
+GPT,42,50,84.0
+Llama,40,50,80.0
+Claude,36,50,72.0
