@@ -1,0 +1,5 @@
+Finding,Recommendation,Priority
+20.0% of comments are negative,Review negative comments and monitor whether the same issues appear repeatedly.,Medium
+42.0% of comments are positive,Examine positive comments to identify strengths that could be highlighted in marketing campaigns.,Medium
+38.0% of comments are neutral,Review neutral comments for questions or information needs that clearer product descriptions or FAQs could address.,Medium
+Gemini had the highest agreement with human labels (86.00%).,"Consider it a candidate for further testing, but validate it on a larger, independent dataset before relying on it.",Low
