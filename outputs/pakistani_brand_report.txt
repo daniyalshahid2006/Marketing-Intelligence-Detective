@@ -1,0 +1,18 @@
+PAKISTANI FASHION BRAND INSTAGRAM ANALYSIS
+
+Posts analyzed: 30
+Brands analyzed: 3
+
+Average metrics by brand:
+    brand  posts  followers  avg_likes  avg_comments  avg_saves  avg_visible_engagement  avg_engagement_per_1000_followers
+Gul Ahmed     10    2600000     5157.8          23.1      304.3                  5180.9                               1.99
+ Sapphire     10    4600000     5883.5          23.3      317.6                  5906.8                               1.28
+   Khaadi     10    6000000     6429.9          22.6      271.1                  6452.5                               1.08
+
+Highest average engagement per 1,000 followers in this sample: Gul Ahmed.
+Highest average likes per post in this sample: Khaadi.
+
+Limitations:
+- Results describe only the posts included in this CSV; they may not represent all posts or all Pakistani audiences.
+- Likes + comments are used as visible engagement. Saves are reported separately because they may not be publicly visible.
+- If any records are illustrative/sample data rather than collected observations, label the dataset as sample data and do not present the results as real-world findings.

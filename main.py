@@ -7,246 +7,422 @@ import re
 
 # Project paths
 BASE_DIR = Path(__file__).parent
-DATA_FILE = BASE_DIR / "sentiment_human_vs_llm.csv"
+DATA_FILE = BASE_DIR / "social_media_sentiment_raw.csv"
 OUTPUT_DIR = BASE_DIR / "outputs"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Load dataset
-df = pd.read_csv(DATA_FILE)
-
-sentiment_columns = ["Human", "GPT", "Claude", "Gemini", "Llama", "Copilot"]
-valid_labels = ["POSITIVE", "NEGATIVE", "NEUTRAL"]
-
-# Standardize sentiment labels
-label_mapping = {
-    "POS": "POSITIVE",
-    "POSTIVE": "POSITIVE",
-    "NEUTAL": "NEUTRAL",
-    "NUETAL": "NEUTRAL",
-    "NUETRAL": "NEUTRAL"
-}
-
-for column in sentiment_columns:
-    df[column] = (
-        df[column]
-        .astype("string")
-        .str.strip()
-        .str.upper()
-        .replace(label_mapping)
+if not DATA_FILE.exists():
+    raise FileNotFoundError(
+        f"Dataset not found: {DATA_FILE}\n"
+        "Place social_media_sentiment_raw.csv beside main.py."
     )
 
-# Keep rows with valid human labels
-df = df[df["Human"].isin(valid_labels)].copy()
+df = pd.read_csv(DATA_FILE)
+df.columns = df.columns.str.strip().str.lower()
 
-# 1. Compare AI models against human labels
-results = []
+# Check required columns
+required = [
+    "post_id", "timestamp", "platform", "text", "hashtags",
+    "country", "likes", "retweets_shares", "comments", "sentiment"
+]
 
-for model in sentiment_columns:
-    if model == "Human":
-        continue
+missing = [column for column in required if column not in df.columns]
 
-    valid = df[model].isin(valid_labels)
-    actual = df.loc[valid, "Human"]
-    predicted = df.loc[valid, model]
+if missing:
+    raise ValueError(f"Missing required columns: {missing}")
 
-    correct = int((actual == predicted).sum())
-    total = len(actual)
-    accuracy = correct / total * 100 if total else 0
+# Clean data
+starting_rows = len(df)
 
-    results.append({
-        "Model": model,
-        "Correct": correct,
-        "Total": total,
-        "Accuracy (%)": round(accuracy, 2)
-    })
+df = df.drop_duplicates(subset=["post_id"]).copy()
 
-results_df = pd.DataFrame(results)
-results_df = results_df.sort_values(
-    "Accuracy (%)", ascending=False
+for column in ["likes", "retweets_shares", "comments"]:
+    df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0)
+    df[column] = df[column].clip(lower=0)
+
+df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+
+# Standardize platform names
+df["platform"] = (
+    df["platform"]
+    .astype("string")
+    .str.strip()
+    .str.title()
 )
 
-# 2. Analyze human-labeled sentiment
-sentiment_counts = (
-    df["Human"]
-    .value_counts()
-    .reindex(valid_labels, fill_value=0)
+# Standardize countries and sentiment
+df["country"] = df["country"].astype("string").str.strip()
+
+df["sentiment"] = (
+    df["sentiment"]
+    .astype("string")
+    .str.strip()
+    .str.upper()
 )
 
-total_comments = len(df)
-negative_count = int(sentiment_counts["NEGATIVE"])
-positive_count = int(sentiment_counts["POSITIVE"])
-neutral_count = int(sentiment_counts["NEUTRAL"])
-
-negative_pct = negative_count / total_comments * 100 if total_comments else 0
-positive_pct = positive_count / total_comments * 100 if total_comments else 0
-neutral_pct = neutral_count / total_comments * 100 if total_comments else 0
-
-sentiment_report = pd.DataFrame({
-    "Sentiment": valid_labels,
-    "Comments": [positive_count, negative_count, neutral_count],
-    "Percentage (%)": [
-        round(positive_pct, 2),
-        round(negative_pct, 2),
-        round(neutral_pct, 2)
-    ]
-})
-
-# 3. Extract common words from comments
-stop_words = {
-    "the", "and", "for", "are", "but", "not", "you", "your",
-    "this", "that", "with", "was", "were", "have", "has",
-    "had", "from", "they", "their", "its", "it's", "into",
-    "about", "just", "very", "can", "could", "would", "will",
-    "what", "when", "where", "who", "how", "all", "also",
-    "been", "being", "than", "then", "there", "here", "our",
-    "out", "get", "got", "too", "much", "more", "some",
-    "really", "only", "like", "his", "her", "she", "him",
-    "them", "we", "i", "me", "my", "it", "is", "a", "an",
-    "to", "of", "in", "on", "at", "as", "or", "if", "be",
-    "do", "so", "no", "yes"
+sentiment_mapping = {
+    "POS": "POSITIVE",
+    "POSTIVE": "POSITIVE",
+    "NEG": "NEGATIVE",
+    "NEUT": "NEUTRAL"
 }
 
-word_counts = Counter()
+df["sentiment"] = df["sentiment"].replace(sentiment_mapping)
 
-if "Comment" in df.columns:
-    for comment in df["Comment"].dropna():
-        words = re.findall(r"\b[a-zA-Z]{3,}\b", str(comment).lower())
-        word_counts.update(
-            word for word in words if word not in stop_words
-        )
+valid_sentiments = ["POSITIVE", "NEGATIVE", "NEUTRAL"]
 
-top_words = word_counts.most_common(15)
-
-word_report = pd.DataFrame(
-    top_words, columns=["Word", "Frequency"]
+# Calculate engagement
+df["engagement"] = (
+    df["likes"] + df["retweets_shares"] + df["comments"]
 )
 
-# 4. Generate marketing recommendations
+df["day_of_week"] = df["timestamp"].dt.day_name()
+df["hour"] = df["timestamp"].dt.hour
+
+# Identify Pakistan posts
+pakistan = df[
+    df["country"].str.contains(
+        r"pakistan|^pk$", case=False, na=False, regex=True
+    )
+].copy()
+
+# 1. Dataset overview
+print("\nPAKISTANI SOCIAL MEDIA CONTENT DETECTIVE")
+print("=" * 45)
+print("Original rows:", starting_rows)
+print("Unique posts analyzed:", len(df))
+print("Duplicate rows removed:", starting_rows - len(df))
+print("Platforms:", df["platform"].nunique())
+print("Countries:", df["country"].nunique())
+print("Posts from Pakistan:", len(pakistan))
+print("Posts with missing timestamps:", df["timestamp"].isna().sum())
+print("Posts with missing sentiment:", df["sentiment"].isna().sum())
+
+# 2. Platform performance
+platform_report = (
+    df.dropna(subset=["platform"])
+    .groupby("platform")
+    .agg(
+        Posts=("post_id", "count"),
+        Average_Likes=("likes", "mean"),
+        Average_Shares=("retweets_shares", "mean"),
+        Average_Comments=("comments", "mean"),
+        Average_Engagement=("engagement", "mean"),
+        Total_Engagement=("engagement", "sum")
+    )
+    .round(2)
+    .sort_values("Average_Engagement", ascending=False)
+)
+
+platform_report.to_csv(OUTPUT_DIR / "platform_performance.csv")
+
+# 3. Sentiment and engagement
+# Missing or unrecognized sentiment labels are excluded only here.
+sentiment_df = df[df["sentiment"].isin(valid_sentiments)].copy()
+
+sentiment_report = (
+    sentiment_df.groupby("sentiment")
+    .agg(
+        Posts=("post_id", "count"),
+        Average_Likes=("likes", "mean"),
+        Average_Shares=("retweets_shares", "mean"),
+        Average_Comments=("comments", "mean"),
+        Average_Engagement=("engagement", "mean")
+    )
+    .round(2)
+    .sort_values("Average_Engagement", ascending=False)
+)
+
+sentiment_report.to_csv(OUTPUT_DIR / "sentiment_engagement.csv")
+
+# 4. Country performance
+country_report = (
+    df.dropna(subset=["country"])
+    .groupby("country")
+    .agg(
+        Posts=("post_id", "count"),
+        Average_Engagement=("engagement", "mean"),
+        Total_Engagement=("engagement", "sum")
+    )
+    .round(2)
+    .sort_values("Average_Engagement", ascending=False)
+)
+
+country_report.to_csv(OUTPUT_DIR / "country_performance.csv")
+
+# 5. Hashtag analysis
+# Extract hashtags from both "#tag" and plain "tag" formats.
+hashtag_posts = {}
+
+for _, row in df.iterrows():
+    raw_hashtags = row["hashtags"]
+
+    if pd.isna(raw_hashtags):
+        continue
+
+    tags = re.findall(r"#?([A-Za-z0-9_]+)", str(raw_hashtags))
+
+    # Count each hashtag at most once per post.
+    for tag in set(tag.lower() for tag in tags):
+        if tag:
+            hashtag_posts.setdefault(tag, []).append(row["engagement"])
+
+hashtag_rows = []
+
+for tag, engagements in hashtag_posts.items():
+    hashtag_rows.append({
+        "Hashtag": tag,
+        "Post_Count": len(engagements),
+        "Average_Engagement": round(
+            sum(engagements) / len(engagements), 2
+        )
+    })
+
+hashtag_report = pd.DataFrame(
+    hashtag_rows,
+    columns=["Hashtag", "Post_Count", "Average_Engagement"]
+)
+
+if not hashtag_report.empty:
+    hashtag_report = hashtag_report.sort_values(
+        ["Average_Engagement", "Post_Count"],
+        ascending=[False, False]
+    )
+
+hashtag_report.to_csv(
+    OUTPUT_DIR / "hashtag_performance.csv", index=False
+)
+
+# 6. Top-performing posts
+top_columns = [
+    "post_id", "platform", "country", "text", "hashtags",
+    "sentiment", "likes", "retweets_shares", "comments", "engagement"
+]
+
+top_posts = df.nlargest(20, "engagement")[top_columns]
+top_posts.to_csv(OUTPUT_DIR / "top_posts.csv", index=False)
+
+# 7. Posting day and hour patterns
+timed_df = df.dropna(subset=["timestamp"]).copy()
+
+day_order = [
+    "Monday", "Tuesday", "Wednesday", "Thursday",
+    "Friday", "Saturday", "Sunday"
+]
+
+day_report = (
+    timed_df.groupby("day_of_week")
+    .agg(
+        Posts=("post_id", "count"),
+        Average_Engagement=("engagement", "mean")
+    )
+    .reindex(day_order)
+    .dropna(subset=["Posts"])
+    .round(2)
+)
+
+hour_report = (
+    timed_df.groupby("hour")
+    .agg(
+        Posts=("post_id", "count"),
+        Average_Engagement=("engagement", "mean")
+    )
+    .round(2)
+)
+
+day_report.to_csv(OUTPUT_DIR / "day_performance.csv")
+hour_report.to_csv(OUTPUT_DIR / "hour_performance.csv")
+
+# 8. Generate marketing recommendations
 recommendations = []
 
-if negative_pct >= 30:
+if not platform_report.empty:
+    best_platform = platform_report.index[0]
+    best_value = platform_report.iloc[0]["Average_Engagement"]
+    platform_posts = int(platform_report.iloc[0]["Posts"])
+
     recommendations.append({
-        "Finding": f"{negative_pct:.1f}% of comments are negative",
+        "Finding": f"{best_platform} has the highest average engagement",
+        "Evidence": (
+            f"Average engagement: {best_value:.2f}; "
+            f"posts analyzed: {platform_posts}"
+        ),
         "Recommendation": (
-            "Investigate customer complaints, identify recurring issues, "
-            "and prioritize improvements."
+            "Test additional content on this platform. Compare similar "
+            "content and audience sizes before increasing investment."
         ),
         "Priority": "High"
     })
-elif negative_count > 0:
-    recommendations.append({
-        "Finding": f"{negative_pct:.1f}% of comments are negative",
-        "Recommendation": (
-            "Review negative comments and monitor whether the same issues "
-            "appear repeatedly."
-        ),
-        "Priority": "Medium"
-    })
-else:
-    recommendations.append({
-        "Finding": "No negative comments were identified",
-        "Recommendation": (
-            "Continue monitoring feedback and verify that the dataset "
-            "contains a representative sample."
-        ),
-        "Priority": "Medium"
-    })
 
-if positive_count > 0:
+if not sentiment_report.empty:
+    best_sentiment = sentiment_report.index[0]
+    best_value = sentiment_report.iloc[0]["Average_Engagement"]
+
     recommendations.append({
-        "Finding": f"{positive_pct:.1f}% of comments are positive",
+        "Finding": f"{best_sentiment} posts have the highest average engagement",
+        "Evidence": (
+            f"Average engagement: {best_value:.2f}; "
+            f"posts analyzed: {int(sentiment_report.iloc[0]['Posts'])}"
+        ),
         "Recommendation": (
-            "Examine positive comments to identify strengths that could "
-            "be highlighted in marketing campaigns."
+            "Review examples in this sentiment category and test similar "
+            "messaging. This association does not prove sentiment causes engagement."
         ),
         "Priority": "Medium"
     })
 
-if neutral_count > 0:
+if not hashtag_report.empty:
+    best_tag = hashtag_report.iloc[0]
+
     recommendations.append({
-        "Finding": f"{neutral_pct:.1f}% of comments are neutral",
+        "Finding": f"#{best_tag['Hashtag']} has the highest average engagement",
+        "Evidence": (
+            f"Posts: {int(best_tag['Post_Count'])}; "
+            f"average engagement: {best_tag['Average_Engagement']:.2f}"
+        ),
         "Recommendation": (
-            "Review neutral comments for questions or information needs "
-            "that clearer product descriptions or FAQs could address."
+            "Review the posts using this hashtag and test it only where "
+            "it is relevant to the brand and audience."
         ),
         "Priority": "Medium"
     })
 
-best_model = results_df.iloc[0] if not results_df.empty else None
+if not day_report.empty:
+    best_day = day_report["Average_Engagement"].idxmax()
+    best_value = day_report.loc[best_day, "Average_Engagement"]
+    day_posts = int(day_report.loc[best_day, "Posts"])
 
-if best_model is not None:
     recommendations.append({
-        "Finding": (
-            f"{best_model['Model']} had the highest agreement "
-            f"with human labels ({best_model['Accuracy (%)']:.2f}%)."
+        "Finding": f"{best_day} has the highest average engagement",
+        "Evidence": (
+            f"Average engagement: {best_value:.2f}; posts: {day_posts}"
         ),
         "Recommendation": (
-            "Consider it a candidate for further testing, but validate "
-            "it on a larger, independent dataset before relying on it."
+            "Run a posting-time experiment across several weeks before "
+            "treating this day as the best time to publish."
+        ),
+        "Priority": "Medium"
+    })
+
+if not hour_report.empty:
+    best_hour = hour_report["Average_Engagement"].idxmax()
+    best_value = hour_report.loc[best_hour, "Average_Engagement"]
+
+    recommendations.append({
+        "Finding": f"Hour {best_hour:02d}:00 has the highest average engagement",
+        "Evidence": f"Average engagement: {best_value:.2f}",
+        "Recommendation": (
+            "Validate this time using the target audience's local time zone "
+            "and test it against alternative posting times."
         ),
         "Priority": "Low"
     })
 
-recommendations_df = pd.DataFrame(recommendations)
+if len(pakistan) == 0:
+    recommendations.append({
+        "Finding": "No posts were labelled as being from Pakistan",
+        "Evidence": "No matching country entries were found in the dataset",
+        "Recommendation": (
+            "Present the current findings as international dataset results. "
+            "Obtain Pakistan-specific data before making claims about Pakistani audiences."
+        ),
+        "Priority": "High"
+    })
+else:
+    recommendations.append({
+        "Finding": f"{len(pakistan)} posts are labelled as from Pakistan",
+        "Evidence": (
+            f"{len(pakistan) / len(df) * 100:.1f}% of all analyzed posts"
+            if len(df) else "No posts"
+        ),
+        "Recommendation": (
+            "Analyze Pakistani posts separately and disclose the sample size "
+            "and any limitations."
+        ),
+        "Priority": "High"
+    })
 
-# 5. Save reports
-results_df.to_csv(OUTPUT_DIR / "model_accuracy.csv", index=False)
-df.to_csv(OUTPUT_DIR / "cleaned_sentiment_data.csv", index=False)
-sentiment_report.to_csv(OUTPUT_DIR / "sentiment_report.csv", index=False)
-word_report.to_csv(OUTPUT_DIR / "common_words.csv", index=False)
+recommendations_df = pd.DataFrame(recommendations)
 recommendations_df.to_csv(
     OUTPUT_DIR / "marketing_recommendations.csv", index=False
 )
 
-# 6. Chart: AI model agreement
-plt.figure(figsize=(9, 5))
-plt.bar(results_df["Model"], results_df["Accuracy (%)"])
-plt.ylabel("Agreement with human labels (%)")
-plt.title("AI Model vs Human Sentiment Agreement")
-plt.ylim(0, 100)
-plt.tight_layout()
-plt.savefig(OUTPUT_DIR / "model_accuracy.png", dpi=200)
-plt.close()
-
-# 7. Chart: sentiment distribution
-plt.figure(figsize=(7, 5))
-plt.bar(sentiment_counts.index, sentiment_counts.values)
-plt.ylabel("Number of comments")
-plt.title("Human-Labeled Sentiment Distribution")
-plt.tight_layout()
-plt.savefig(OUTPUT_DIR / "sentiment_distribution.png", dpi=200)
-plt.close()
-
-# 8. Chart: most common words
-if not word_report.empty:
-    chart_words = word_report.sort_values("Frequency")
-    plt.figure(figsize=(9, 6))
-    plt.barh(chart_words["Word"], chart_words["Frequency"])
-    plt.xlabel("Frequency")
-    plt.title("Most Common Words in Comments")
+# 9. Generate charts
+if not platform_report.empty:
+    platform_report["Average_Engagement"].plot(kind="bar")
+    plt.title("Average Engagement by Platform")
+    plt.xlabel("Platform")
+    plt.ylabel("Average likes + shares + comments")
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "common_words.png", dpi=200)
+    plt.savefig(OUTPUT_DIR / "platform_engagement.png", dpi=200)
     plt.close()
 
-# 9. Print results
-print("\nMARKETING INTELLIGENCE DETECTIVE")
-print("=" * 38)
-print("Comments analyzed:", total_comments)
+if not sentiment_report.empty:
+    sentiment_report["Average_Engagement"].plot(kind="bar")
+    plt.title("Average Engagement by Sentiment")
+    plt.xlabel("Sentiment")
+    plt.ylabel("Average engagement")
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / "sentiment_engagement.png", dpi=200)
+    plt.close()
 
-print("\nHUMAN SENTIMENT DISTRIBUTION")
-print(sentiment_report.to_string(index=False))
+if not hashtag_report.empty:
+    chart_data = hashtag_report.head(10).sort_values(
+        "Average_Engagement"
+    )
 
-print("\nAI MODEL AGREEMENT")
-print(results_df.to_string(index=False))
+    chart_data.plot(
+        x="Hashtag",
+        y="Average_Engagement",
+        kind="barh",
+        legend=False
+    )
+    plt.title("Top Hashtags by Average Engagement")
+    plt.xlabel("Average engagement")
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / "hashtag_engagement.png", dpi=200)
+    plt.close()
 
-print("\nTOP WORDS IN COMMENTS")
-if word_report.empty:
-    print("No Comment column or usable comment text was found.")
+if not day_report.empty:
+    day_report["Average_Engagement"].plot(kind="bar")
+    plt.title("Average Engagement by Day")
+    plt.xlabel("Day of week")
+    plt.ylabel("Average engagement")
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / "day_engagement.png", dpi=200)
+    plt.close()
+
+# 10. Save an overall summary
+summary = pd.DataFrame([{
+    "Posts_Analyzed": len(df),
+    "Platforms": df["platform"].nunique(),
+    "Countries": df["country"].nunique(),
+    "Pakistan_Posts": len(pakistan),
+    "Valid_Sentiment_Posts": len(sentiment_df),
+    "Missing_Timestamps": int(df["timestamp"].isna().sum())
+}])
+
+summary.to_csv(OUTPUT_DIR / "dataset_summary.csv", index=False)
+
+# 11. Print results
+print("\nPLATFORM PERFORMANCE")
+print(platform_report.to_string())
+
+print("\nSENTIMENT AND ENGAGEMENT")
+print(sentiment_report.to_string())
+
+print("\nTOP 10 HASHTAGS BY AVERAGE ENGAGEMENT")
+if hashtag_report.empty:
+    print("No usable hashtags were found.")
 else:
-    print(word_report.to_string(index=False))
+    print(hashtag_report.head(10).to_string(index=False))
+
+print("\nDAY PERFORMANCE")
+print(day_report.to_string())
 
 print("\nMARKETING RECOMMENDATIONS")
 print(recommendations_df.to_string(index=False))
 
-print("\nReports saved in:", OUTPUT_DIR)
+print("\nReports and charts saved to:", OUTPUT_DIR)
 print("Analysis completed successfully!")

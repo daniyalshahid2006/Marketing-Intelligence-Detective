@@ -1,0 +1,4 @@
+sentiment,Posts,Average_Likes,Average_Shares,Average_Comments,Average_Engagement
+POSITIVE,879,41.97,7.89,3.95,53.81
+NEGATIVE,636,33.5,6.16,3.15,42.81
+NEUTRAL,652,30.22,5.37,2.81,38.41

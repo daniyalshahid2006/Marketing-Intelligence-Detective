@@ -1,0 +1,21 @@
+post_id,platform,country,text,hashtags,sentiment,likes,retweets_shares,comments,engagement
+P101321,Twitter,Japan,"Can't stop smiling after that release event, truly wonderful.",,POSITIVE,126,28,15.0,169.0
+P101368,Instagram,Japan,"So grateful for event today, made my whole week.",#Climate #Gaming,POSITIVE,107,37,18.0,162.0
+P101860,Instagram,USA,"This release launch exceeded all my expectations, fantastic work.",#Movies,POSITIVE,114,28,17.0,159.0
+P100416,Tiktok,Germany,"Reading more about product this week, lots to unpack.",#Movies #News,NEUTRAL,103,32,20.0,155.0
+P101015,Tiktok,USA,"So grateful for policy today, made my whole week.",#Business #Art #AI,POSITIVE,107,33,13.0,153.0
+P101835,Tiktok,India,"Attended a policy session today, some interesting points raised.",#Art,NEUTRAL,114,28,9.0,151.0
+P101783,Instagram,usa,"Absolutely loving the new service update, this is amazing!",#Music #Foodie #Business,POSITIVE,117,19,13.0,149.0
+P100035,Twitter,USA,"So grateful for platform today, made my whole week.",,POSITIVE,120,23,4.0,147.0
+P101945,Instagram,USA,"So grateful for platform today, made my whole week.",,POSITIVE,98,26,13.0,137.0
+P101772,Instagram,USA,"Absolutely loving the new community update, this is amazing!",#Business #Travel,POSITIVE,96,21,15.0,132.0
+P101120,Facebook,India,"Absolutely loving the new campaign update, this is amazing!",,POSITIVE,93,32,4.0,129.0
+P100910,Tiktok,Mexico,"Terrible customer support regarding campaign, will not return.",,NEGATIVE,96,31,0.0,127.0
+P100268,Twitter,Canada,"Can't stop smiling after that community event, truly wonderful.",#Movies #Health,POSITIVE,98,12,15.0,125.0
+P100675,Tiktok,Brazil,"So grateful for campaign today, made my whole week.",,POSITIVE,105,11,9.0,125.0
+P101445,Twitter,Germany,"So grateful for product today, made my whole week.",#News #Fashion #Health,POSITIVE,94,17,13.0,124.0
+P101883,Instagram,Brazil,"Worst event experience I've had in a long time, frustrating.",#Fashion #Climate,NEGATIVE,97,9,18.0,124.0
+P101607,Tiktok,USA,Here's a quick update on brand for anyone following along.,#Tech #Sports #AI,NEUTRAL,89,24,8.0,121.0
+P102100,Tiktok,India,"Best brand experience ever, highly recommend to everyone.",#Music #Art,,101,7,12.0,120.0
+P100452,Twitter,USA,"Can't stop smiling after that policy event, truly wonderful.",#News,POSITIVE,104,10,4.0,118.0
+P100905,Tiktok,India,"Reading more about community this week, lots to unpack.",#Music #Climate #Business,NEUTRAL,95,6,17.0,118.0

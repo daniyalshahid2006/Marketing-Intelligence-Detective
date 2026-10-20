@@ -1,5 +1,7 @@
-Finding,Recommendation,Priority
-20.0% of comments are negative,Review negative comments and monitor whether the same issues appear repeatedly.,Medium
-42.0% of comments are positive,Examine positive comments to identify strengths that could be highlighted in marketing campaigns.,Medium
-38.0% of comments are neutral,Review neutral comments for questions or information needs that clearer product descriptions or FAQs could address.,Medium
-Gemini had the highest agreement with human labels (86.00%).,"Consider it a candidate for further testing, but validate it on a larger, independent dataset before relying on it.",Low
+Finding,Evidence,Recommendation,Priority
+Tiktok has the highest average engagement,Average engagement: 60.50; posts analyzed: 390,Test additional content on this platform. Compare similar content and audience sizes before increasing investment.,High
+POSITIVE posts have the highest average engagement,Average engagement: 53.81; posts analyzed: 879,Review examples in this sentiment category and test similar messaging. This association does not prove sentiment causes engagement.,Medium
+#ai has the highest average engagement,Posts: 175; average engagement: 49.38,Review the posts using this hashtag and test it only where it is relevant to the brand and audience.,Medium
+Sunday has the highest average engagement,Average engagement: 48.51; posts: 267,Run a posting-time experiment across several weeks before treating this day as the best time to publish.,Medium
+Hour 02:00 has the highest average engagement,Average engagement: 47.89,Validate this time using the target audience's local time zone and test it against alternative posting times.,Low
+No posts were labelled as being from Pakistan,No matching country entries were found in the dataset,Present the current findings as international dataset results. Obtain Pakistan-specific data before making claims about Pakistani audiences.,High
